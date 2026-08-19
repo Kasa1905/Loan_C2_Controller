@@ -1,23 +1,22 @@
 # Loan C2 Controller
 
-FastAPI orchestration service connecting the existing MongoDB loan applications, external Rule Engine, and external Risk Detection service.
+Node.js/Express/Mongoose orchestration service connecting MongoDB applications to the external Rule Engine and Risk Detection service.
 
 ## Setup
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+npm install
 cp .env.example .env
 ```
 
-Configure `.env` with the MongoDB database and the URLs/endpoints of the Rule Engine and Risk Detection services.
+Configure `.env` with MongoDB Atlas credentials, the Rule Engine URL/endpoint, and the Risk Detection URL/endpoint.
+
+If your machine cannot resolve Atlas SRV records (for example `querySrv EBADRESP`), set `MONGODB_URI_FALLBACK` to the standard (non-SRV) Atlas connection string (`mongodb://...`) and keep `MONGODB_URI` as-is. C2 will automatically retry using the fallback URI when SRV DNS resolution fails.
 
 ## Start
 
 ```bash
-source .venv/bin/activate
-uvicorn app.main:app --host ${C2_HOST:-0.0.0.0} --port ${C2_PORT:-8010}
+npm start
 ```
 
 ## Health
@@ -42,7 +41,9 @@ curl -X POST "http://localhost:8010/api/c2/process/6a845dad59c737ee08fad902" \
   -d '{"trigger":"INITIAL_ASSESSMENT"}'
 ```
 
-The response includes the canonical `riskInput`, complete Rule Engine and Risk Detection responses, and the persisted current assessment. A request without a body uses `INITIAL_ASSESSMENT`.
+The response includes the canonical `riskInput`, complete Rule Engine and Risk Detection responses, and the persisted assessment. A request without a body uses `INITIAL_ASSESSMENT`.
+
+`RISK_SCORE_SCALE` may be `10` or `100`. The original Risk Detection score is preserved in `result.score`; C2 additionally stores `normalizedScore`.
 
 ## MongoDB verification
 
@@ -53,4 +54,4 @@ db.finalapplications.findOne(
 )
 ```
 
-`riskAssessment.current` contains the latest iteration and `riskAssessment.history` contains every iteration, including failed ones. Running the process command twice should produce history entries with numbers `1` and `2`.
+`riskAssessment.current` contains the latest successful assessment and `riskAssessment.history` contains every iteration, including failed ones. Running the process command twice should produce history entries with numbers `1` and `2`.
