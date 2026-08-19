@@ -59,22 +59,101 @@ function buildRuleEnginePayload(applicationId, application) {
   };
 }
 
-function buildRiskInput(applicationId, application, ruleEnginePayload, ruleResult, previous, iteration) {
-  const documents = Array.isArray(application.documents) ? application.documents : [];
+function buildRiskInput(
+  applicationId,
+  application,
+  ruleEnginePayload,
+  ruleResult,
+  previous,
+  iteration
+) {
+  const documents = Array.isArray(application.documents)
+    ? application.documents
+    : [];
+
+  const applicant = application.applicantDetails || {};
+  const financial = application.financialDetails || {};
+  const loan = application.loanDetails || {};
+
   return {
     schemaVersion: '1.0',
     source: 'C2',
+
     application: {
       applicationId,
-      applicantDetails: application.applicantDetails || {},
-      financialDetails: application.financialDetails || {},
-      loanDetails: application.loanDetails || {},
+
+      applicantDetails: {
+        ...applicant,
+
+        // Map actual application fields -> Risk Detection fields
+        creditScore: financial.cibilScore ?? null,
+        creditHistoryYears: financial.creditHistoryYears ?? null,
+        previousDefaults: financial.previousLoanDefaults ?? null,
+
+        // Existing data already lives here
+        monthlyIncome: applicant.monthlyIncome ?? null,
+
+        // Optional fields if available
+        employmentType: applicant.employmentType ?? null,
+        employmentTenureMonths: applicant.employmentTenureMonths ?? null,
+      },
+
+      financialDetails: {
+        ...financial,
+
+        // Map actual application fields -> Risk Detection fields
+        monthlyIncome: applicant.monthlyIncome ?? null,
+        existingEmiAmount: financial.emiObligations ?? null,
+
+        monthlyExpenses: financial.monthlyExpenses ?? null,
+        otherLiabilities: financial.otherLiabilities ?? null,
+        bankBalance: financial.bankBalance ?? null,
+      },
+
+      loanDetails: {
+        ...loan,
+
+        loanAmount: loan.loanAmount ?? null,
+        tenureMonths: loan.tenureMonths ?? null,
+      },
+
       documents,
+
       processingStatus: application.processingStatus ?? null,
       profileStatus: application.profileStatus ?? null,
       eligibilityStatus: application.eligibilityStatus ?? null,
       eligibilityScore: application.eligibilityScore ?? null,
     },
+
+    applicantDetails: {
+      ...applicant,
+
+      creditScore: financial.cibilScore ?? null,
+      creditHistoryYears: financial.creditHistoryYears ?? null,
+      previousDefaults: financial.previousLoanDefaults ?? null,
+
+      monthlyIncome: applicant.monthlyIncome ?? null,
+
+      employmentType: applicant.employmentType ?? null,
+      employmentTenureMonths: applicant.employmentTenureMonths ?? null,
+    },
+
+    financialDetails: {
+      ...financial,
+
+      monthlyIncome: applicant.monthlyIncome ?? null,
+      existingEmiAmount: financial.emiObligations ?? null,
+    },
+
+    loanDetails: {
+      ...loan,
+
+      loanAmount: loan.loanAmount ?? null,
+      tenureMonths: loan.tenureMonths ?? null,
+    },
+
+    documents,
+
     documentProcessing: {
       status: application.processingStatus ?? null,
       profileStatus: application.profileStatus ?? null,
@@ -83,13 +162,36 @@ function buildRiskInput(applicationId, application, ruleEnginePayload, ruleResul
       digitalProfile: application.digitalProfile ?? null,
       documents,
     },
+
     ruleEngine: {
-      status: ruleResult.status,
-      result: ruleResult.result,
-      error: ruleResult.error ?? null,
+      // IMPORTANT: Risk Detection expects PASSED/PARTIAL/FAILED,
+      // not the C2 wrapper status COMPLETED.
+      status:
+        ruleResult?.result?.status ??
+        ruleResult?.result?.ruleStatus ??
+        ruleResult?.status ??
+        null,
+
+      compliant:
+        ruleResult?.result?.compliant ??
+        ruleResult?.result?.isCompliant ??
+        null,
+
+      violations:
+        ruleResult?.result?.violations ??
+        [],
+
+      ruleScore:
+        ruleResult?.result?.ruleScore ??
+        ruleResult?.result?.complianceScore ??
+        null,
     },
+
     ruleEnginePayload,
+
     previousRiskAssessment: previous,
+
+    // CRITICAL: Risk Detection expects an integer
     iteration: iteration.number,
   };
 }
