@@ -2,7 +2,7 @@
        "mdb.presetConnections": [
               {
                      "name": "Preset Connection",
-                     "connectionString": "mongodb+srv://bg2722005_db_user:GgUqABQXCylkbOno@cluster0.69mhy8u.mongodb.net/"
+                     "connectionString": "mongodb://localhost:27017"
               }
        ]
 }
