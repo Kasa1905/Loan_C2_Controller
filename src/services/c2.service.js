@@ -90,7 +90,7 @@ function buildRiskInput(applicationId, application, ruleEnginePayload, ruleResul
     },
     ruleEnginePayload,
     previousRiskAssessment: previous,
-    iteration,
+    iteration: iteration.number,
   };
 }
 
